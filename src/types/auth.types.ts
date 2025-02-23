@@ -14,3 +14,15 @@ export interface User {
   username: string;
   esAdmin: number;
 }
+
+
+export interface Usuario {
+  codUsuario: number;
+  codParticipante: number;
+  usuario: string;
+  contrasena: string;
+  estado: boolean;
+  esAdmin: boolean;
+  audUsuario: string;
+  audFecha: Date;
+}
