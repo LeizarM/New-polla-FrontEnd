@@ -26,6 +26,7 @@ import { Equipo } from "@/types/models/Equipo";
 import { equipoService } from "@/services/equipo.services";
 import { SearchIcon } from "@nextui-org/shared-icons";
 import { useRouter } from "next/navigation"; // Importamos useRouter para refrescar la página
+import authService from "@/services/auth.services";
 
 const ROWS_PER_PAGE = 10;
 
@@ -105,7 +106,7 @@ export default function EquiposPage() {
         codEquipo: selectedEquipo?.codEquipo || 0,  
         nombre: equipo.nombre,    
         descripcion: equipo.descripcion,    
-        audUsuario: 1,  
+        audUsuario: authService.getCodUsuario() || 0,
          
       };    
     

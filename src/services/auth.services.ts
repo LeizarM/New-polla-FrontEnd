@@ -22,7 +22,8 @@ const login = async (credentials: LoginCredentials): Promise<AuthResponse> => {
       localStorage.setItem(TOKEN_KEY, response.data.token);
       localStorage.setItem(USER_KEY, JSON.stringify({
         username: response.data.usuario,
-        esAdmin: response.data.esAdmin
+        esAdmin: response.data.esAdmin,
+        codUsuario: response.data.codUsuario
       }));
     }
     
@@ -56,12 +57,17 @@ const isAuthenticated = (): boolean => {
   return !!getToken();
 };
 
+const getCodUsuario = (): number | null => {
+  return  JSON.parse(localStorage.getItem(USER_KEY) || '').codUsuario;
+}
+
 const authService = {
   login,
   logout,
   getCurrentUser,
   getToken,
-  isAuthenticated
+  isAuthenticated,
+  getCodUsuario
 };
 
 export default authService;

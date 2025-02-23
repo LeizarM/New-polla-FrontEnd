@@ -5,6 +5,7 @@ export interface LoginCredentials {
 }
 
 export interface AuthResponse {
+  codUsuario: number;
   token: string;
   usuario: string;
   esAdmin: number;

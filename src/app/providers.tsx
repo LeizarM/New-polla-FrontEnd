@@ -21,7 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <NextUIProvider>
       <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem={false}>
         <AuthProvider>
-          <Toaster richColors />
+          <Toaster richColors position='top-center'/>
           {mounted ? children : <div style={{ visibility: 'hidden' }}>{children}</div>}
         </AuthProvider>
       </NextThemesProvider>
