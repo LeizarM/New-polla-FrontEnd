@@ -7,9 +7,9 @@ import {
   CardBody,
   CardFooter,
   Button,
-  
 } from "@nextui-org/react";
 import { Icon } from "@iconify/react";
+import { useRouter, usePathname } from "next/navigation";
 
 interface SidebarProps {
   items: Array<{
@@ -28,11 +28,14 @@ export default function Sidebar({
   selectedKey: controlledSelectedKey,
   onSelectionChange,
 }: SidebarProps) {
+  const router = useRouter();
+  const pathname = usePathname();
   const [selectedKey, setSelectedKey] = React.useState(defaultSelectedKey);
 
   const handleSelectionChange = (key: string) => {
     setSelectedKey(key);
     onSelectionChange?.(key);
+    router.push(`/dashboard/${key === 'dashboard' ? '' : key}`);
   };
 
   const activeKey = controlledSelectedKey || selectedKey;
@@ -43,12 +46,18 @@ export default function Sidebar({
         {items.map((item) => (
           <Button
             key={item.key}
-            className={`justify-start text-default-500 data-[hover=true]:text-foreground ${
-              activeKey === item.key ? "bg-primary/10 text-primary" : ""
+            className={`w-full justify-start text-default-500 data-[hover=true]:text-foreground ${
+              pathname === `/dashboard/${item.key === 'dashboard' ? '' : item.key}` 
+                ? "bg-primary/10 text-primary" 
+                : ""
             }`}
             startContent={
               <Icon
-                className={activeKey === item.key ? "text-primary" : "text-default-500"}
+                className={
+                  pathname === `/dashboard/${item.key === 'dashboard' ? '' : item.key}`
+                    ? "text-primary"
+                    : "text-default-500"
+                }
                 icon={item.icon}
                 width={24}
               />

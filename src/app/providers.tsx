@@ -4,6 +4,7 @@ import { NextUIProvider } from '@nextui-org/react'
 import { ThemeProvider as NextThemesProvider } from 'next-themes'
 import { AuthProvider } from '@/context/AuthProvider'
 import { useEffect, useState } from 'react'
+import { Toaster } from 'sonner'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Añadimos un estado para controlar si estamos en el cliente
@@ -20,6 +21,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <NextUIProvider>
       <NextThemesProvider attribute="class" defaultTheme="dark" enableSystem={false}>
         <AuthProvider>
+          <Toaster richColors />
           {mounted ? children : <div style={{ visibility: 'hidden' }}>{children}</div>}
         </AuthProvider>
       </NextThemesProvider>

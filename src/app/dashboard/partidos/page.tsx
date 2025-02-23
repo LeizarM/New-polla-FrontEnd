@@ -14,7 +14,6 @@ import {
   SelectItem,
 } from '@nextui-org/react';
 import { Icon } from "@iconify/react";
-import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function PartidosPage() {
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -43,7 +42,7 @@ export default function PartidosPage() {
   ];
 
   return (
-    <DashboardLayout>
+   
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Partidos</h1>
@@ -176,6 +175,6 @@ export default function PartidosPage() {
 
         {/* Aquí iría el modal para crear/editar partidos */}
       </div>
-    </DashboardLayout>
+   
   );
 }

@@ -22,7 +22,7 @@ import {
   Divider,
 } from '@nextui-org/react';
 import { Icon } from "@iconify/react";
-import DashboardLayout from '@/components/layout/DashboardLayout';
+
 
 export default function ApuestasPage() {
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -178,7 +178,7 @@ export default function ApuestasPage() {
   };
 
   return (
-    <DashboardLayout>
+    
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
@@ -340,6 +340,6 @@ export default function ApuestasPage() {
 
         <BetModal />
       </div>
-    </DashboardLayout>
+   
   );
 }

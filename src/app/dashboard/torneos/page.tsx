@@ -16,7 +16,6 @@ import {
   useDisclosure
 } from '@nextui-org/react';
 import { Icon } from "@iconify/react";
-import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function TorneosPage() {
   const {isOpen, onOpen, onClose} = useDisclosure();
@@ -35,7 +34,7 @@ export default function TorneosPage() {
   ];
 
   return (
-    <DashboardLayout>
+    
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Torneos</h1>
@@ -104,6 +103,6 @@ export default function TorneosPage() {
 
         {/* Aquí iría el modal para crear/editar torneos */}
       </div>
-    </DashboardLayout>
+    
   );
 }
