@@ -18,29 +18,37 @@ import CustomDatePicker, { datePickerStyles } from '@/components/ui/CustomDatePi
 import { inputClassNames } from '@/components/ui/constants';
 import { parseDate, validateDateRange } from '@/utils/dateUtils';
 import useInjectStyles from '@/hooks/useInjectStyles';
+import { torneoService } from '@/services/torneo.services';
+import { toast } from 'sonner';
 
 interface TorneoFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Torneo) => Promise<boolean>;
+  onSuccess?: () => void;
   torneo?: Torneo;
 }
 
-export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: TorneoFormProps) {
+// Valores por defecto para un nuevo torneo
+const defaultValues = {
+  nombre: '',
+  fechaInicio: new Date(),
+  fechaFin: new Date(),
+  montoTotal: 0,
+  montoFecha: 0,
+  montoPolla: 0,
+  finalizado: 'NO',
+};
+
+export default function TorneoForm({ isOpen, onClose, onSuccess, torneo }: TorneoFormProps) {
   // Inyectar estilos para DatePicker
   useInjectStyles(datePickerStyles, 'react-datepicker-styles');
 
+  // Estado de carga
+  const [isLoading, setIsLoading] = useState(false);
+
   // Form hook
   const { control, handleSubmit, reset, formState: { errors } } = useForm<Torneo>({
-    defaultValues: {
-      nombre: '',
-      fechaInicio: new Date(),
-      fechaFin: new Date(),
-      montoTotal: 0,
-      montoFecha: 0,
-      montoPolla: 0,
-      finalizado: 'NO',
-    }
+    defaultValues
   });
 
   // Estados para las fechas y validaciones
@@ -49,25 +57,38 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
   const [fechaInicioError, setFechaInicioError] = useState<string>("");
   const [fechaFinError, setFechaFinError] = useState<string>("");
 
-  // Inicializar formulario con datos del torneo (si existe)
+  // Inicializar formulario con datos del torneo (si existe) o valores por defecto
   useEffect(() => {
-    if (torneo) {
-      const fechaInicioDate = parseDate(torneo.fechaInicio) || new Date();
-      const fechaFinDate = parseDate(torneo.fechaFin) || new Date();
-      
-      setFechaInicio(fechaInicioDate);
-      setFechaFin(fechaFinDate);
-      
-      reset({
-        ...torneo,
-        fechaInicio: fechaInicioDate,
-        fechaFin: fechaFinDate,
-      });
-    } else {
-      const now = new Date();
-      setFechaInicio(now);
-      setFechaFin(now);
-      reset();
+    console.log("isOpen:", isOpen, "torneo:", torneo ? "Sí" : "No");
+    
+    // Asegurar que se limpien correctamente los campos cuando se abre para un nuevo torneo
+    if (isOpen) {
+      if (torneo) {
+        // Editar torneo existente
+        const fechaInicioDate = parseDate(torneo.fechaInicio) || new Date();
+        const fechaFinDate = parseDate(torneo.fechaFin) || new Date();
+        
+        console.log("Editando torneo:", torneo.nombre);
+        
+        setFechaInicio(fechaInicioDate);
+        setFechaFin(fechaFinDate);
+        
+        reset({
+          ...torneo,
+          fechaInicio: fechaInicioDate,
+          fechaFin: fechaFinDate,
+        });
+      } else {
+        // Nuevo torneo - limpiar completamente el formulario
+        console.log("Creando nuevo torneo, limpiando formulario");
+        
+        const now = new Date();
+        setFechaInicio(now);
+        setFechaFin(now);
+        
+        // Restablecer todos los campos a sus valores por defecto
+        reset(defaultValues);
+      }
     }
   }, [torneo, reset, isOpen]);
 
@@ -95,19 +116,43 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
   };
 
   // Manejar envío del formulario
-  const onFormSubmit = (formData: any) => {
-    if (!validateDates()) return;
-    
-    const torneoData: Torneo = {
-      ...formData,
-      codTorneo: torneo?.codTorneo,
-      fechaInicio,
-      fechaFin,
-    };
-    
-    onSubmit(torneoData).then(success => {
-      if (success) onClose();
-    });
+  const onFormSubmit = async (formData: any) => {
+    try {
+      if (!validateDates()) return;
+      
+      setIsLoading(true);
+      
+      const torneoData: Torneo = {
+        ...formData,
+        codTorneo: torneo?.codTorneo || 0,
+        fechaInicio,
+        fechaFin,
+      };
+      
+      console.log("Enviando datos de torneo:", torneoData);
+      
+      // Usar el servicio para registrar o actualizar
+      const response = await torneoService.register(torneoData);
+      
+      if (response.success) {
+        toast.success(response.message || (torneo ? 'Torneo actualizado correctamente' : 'Torneo creado correctamente'));
+        onClose();
+        if (onSuccess) onSuccess();
+      } else {
+        toast.error(response.message || 'Error al procesar la solicitud');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al procesar la solicitud');
+      console.error('Error al guardar torneo:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Limpiar el formulario al cerrar el modal
+  const handleClose = () => {
+    // No es necesario limpiar aquí porque limpiaremos al volver a abrir
+    onClose();
   };
 
   // Renderizar campos de montos
@@ -143,7 +188,7 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
   return (
     <Modal
       isOpen={isOpen}
-      onClose={onClose}
+      onClose={handleClose}
       size="lg"
       backdrop="blur"
       classNames={{
@@ -226,13 +271,19 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
           </ModalBody>
 
           <ModalFooter>
-            <Button variant="light" onPress={onClose} className="text-gray-300 hover:text-white">
+            <Button 
+              variant="light" 
+              onPress={handleClose} 
+              className="text-gray-300 hover:text-white"
+              isDisabled={isLoading}
+            >
               Cancelar
             </Button>
             <Button
               color="primary"
               type="submit"
-              endContent={<Icon icon="solar:check-circle-bold" width={20} />}
+              isLoading={isLoading}
+              endContent={!isLoading && <Icon icon="solar:check-circle-bold" width={20} />}
             >
               {torneo ? 'Actualizar' : 'Crear'}
             </Button>

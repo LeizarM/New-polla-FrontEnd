@@ -1,4 +1,3 @@
-// src/app/dashboard/torneos/page.tsx
 'use client'
 
 import React, { useEffect, useState } from 'react';
@@ -33,7 +32,7 @@ export default function TorneosPage() {
   const [loading, setLoading] = useState(true);
   const [filterValue, setFilterValue] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedTorneo, setSelectedTorneo] = useState<Torneo | undefined>();
+  const [selectedTorneo, setSelectedTorneo] = useState<Torneo | undefined>(undefined);
   const [torneoToDelete, setTorneoToDelete] = useState<Torneo | null>(null);
   const { showToast } = useToast();
 
@@ -62,11 +61,9 @@ export default function TorneosPage() {
   }, []);
 
   const filteredItems = React.useMemo(() => {
-    console.log('Torneos antes de filtrar:', torneos);
     const filtered = torneos.filter((torneo) =>
       torneo.nombre?.toLowerCase().includes(filterValue.toLowerCase())
     );
-    console.log('Torneos después de filtrar:', filtered);
     return filtered;
   }, [torneos, filterValue]);
 
@@ -75,7 +72,6 @@ export default function TorneosPage() {
     const start = (page - 1) * ROWS_PER_PAGE;
     const end = start + ROWS_PER_PAGE;
     const paginated = filteredItems.slice(start, end);
-    console.log('Items paginados:', paginated);
     return paginated;
   }, [page, filteredItems]);
 
@@ -107,27 +103,32 @@ export default function TorneosPage() {
     return amount.toLocaleString('es-ES');
   };
 
-  const handleSubmit = async (torneo: Torneo) => {
-    try {
-      // Descomentar cuando el servicio esté implementado
-      // await torneoService.register(torneo);
-      showToast({
-        type: "success",
-        title: "Éxito",
-        description: selectedTorneo ? "Torneo actualizado correctamente" : "Torneo creado correctamente"
-      });
-      onFormClose();
-      setSelectedTorneo(undefined);
-      await fetchTorneos();
-      return true;
-    } catch (error: any) {
-      showToast({
-        type: "error",
-        title: "Error",
-        description: error.message || "Error al procesar la solicitud"
-      });
-      return false;
-    }
+  // Función que se ejecutará después de que una operación en el formulario sea exitosa
+  const handleFormSuccess = async () => {
+    await fetchTorneos();
+  };
+
+  // Función para abrir el modal de nuevo torneo
+  const handleNewTorneo = () => {
+    // Asegurarse de que no haya torneo seleccionado
+    setSelectedTorneo(undefined);
+    setTimeout(() => {
+      onFormOpen();
+    }, 0);
+  };
+
+  // Función para abrir el modal de edición de torneo
+  const handleEditTorneo = (torneo: Torneo) => {
+    // Convertimos las fechas a Date antes de pasarlas
+    const updatedTorneo = {
+      ...torneo,
+      fechaInicio: parseDate(torneo.fechaInicio),
+      fechaFin: parseDate(torneo.fechaFin!),
+    };
+    setSelectedTorneo(updatedTorneo);
+    setTimeout(() => {
+      onFormOpen();
+    }, 0);
   };
 
   const handleDelete = async () => {
@@ -152,16 +153,13 @@ export default function TorneosPage() {
     }
   };
 
-  if (loading) {
+  if (loading && torneos.length === 0) {
     return (
       <div className="flex h-[calc(100vh-200px)] items-center justify-center bg-gray-900">
         <Spinner size="lg" label="Cargando torneos..." color="white" />
       </div>
     );
   }
-
-  console.log('Estado de isFormOpen:', isFormOpen);
-  console.log('Torneo seleccionado:', selectedTorneo);
 
   return (
     <div className="p-6 max-w-[1200px] mx-auto bg-gray-900 text-white">
@@ -174,10 +172,7 @@ export default function TorneosPage() {
           color="primary"
           size="md"
           endContent={<Icon icon="solar:add-circle-bold" width={20} />}
-          onPress={() => {
-            setSelectedTorneo(undefined);
-            onFormOpen();
-          }}
+          onPress={handleNewTorneo}
         >
           Nuevo Torneo
         </Button>
@@ -201,116 +196,114 @@ export default function TorneosPage() {
             />
           </div>
 
-          <Table
-            aria-label="Tabla de torneos"
-            isHeaderSticky
-            bottomContent={
-              pages > 1 ? (
-                <div className="flex justify-center py-2">
-                  <Pagination
-                    isCompact
-                    showControls
-                    showShadow
-                    color="primary"
-                    page={page}
-                    total={pages}
-                    onChange={setPage}
-                    classNames={{
-                      cursor: "bg-blue-500 text-white",
-                      item: "text-gray-200 hover:bg-gray-700",
-                    }}
-                  />
-                </div>
-              ) : null
-            }
-            classNames={{
-              wrapper: "min-h-[300px] p-2",
-              th: "bg-blue-800 text-white font-medium",
-              td: "py-3 text-gray-200",
-              tr: "hover:bg-gray-700",
-            }}
-          >
-            <TableHeader>
-              <TableColumn>NOMBRE</TableColumn>
-              <TableColumn>FECHA INICIO</TableColumn>
-              <TableColumn>FECHA FIN</TableColumn>
-              <TableColumn>MONTO TOTAL</TableColumn>
-              <TableColumn>MONTO FECHA</TableColumn>
-              <TableColumn>MONTO POLLA</TableColumn>
-              <TableColumn>ESTADO</TableColumn>
-              <TableColumn className="text-right">ACCIONES</TableColumn>
-            </TableHeader>
-            <TableBody emptyContent="No hay torneos disponibles">
-              {items.map((torneo) => (
-                <TableRow key={torneo.codTorneo}>
-                  <TableCell className="font-medium text-gray-100">{torneo.nombre}</TableCell>
-                  <TableCell>{formatDate(torneo.fechaInicio)}</TableCell>
-                  <TableCell>{formatDate(torneo.fechaFin)}</TableCell>
-                  <TableCell>{formatAmount(torneo.montoTotal)}</TableCell>
-                  <TableCell>{formatAmount(torneo.montoFecha)}</TableCell>
-                  <TableCell>{formatAmount(torneo.montoPolla)}</TableCell>
-                  <TableCell>
-                    <Chip
-                      color={torneo.finalizado === "SI" ? "success" : "warning"}
-                      size="sm"
-                      variant="flat"
+          {loading ? (
+            <div className="flex justify-center p-6">
+              <Spinner color="primary" label="Actualizando datos..." />
+            </div>
+          ) : (
+            <Table
+              aria-label="Tabla de torneos"
+              isHeaderSticky
+              bottomContent={
+                pages > 1 ? (
+                  <div className="flex justify-center py-2">
+                    <Pagination
+                      isCompact
+                      showControls
+                      showShadow
+                      color="primary"
+                      page={page}
+                      total={pages}
+                      onChange={setPage}
                       classNames={{
-                        base: "bg-opacity-80",
-                        content: "text-white",
+                        cursor: "bg-blue-500 text-white",
+                        item: "text-gray-200 hover:bg-gray-700",
                       }}
-                    >
-                      {torneo.finalizado === "SI" ? "Finalizado" : "En curso"}
-                    </Chip>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex justify-end gap-2">
-                      <Tooltip content="Editar torneo" color="primary">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          color="primary"
-                          onPress={() => {
-                            // Convertimos las fechas a Date antes de pasarlas
-                            const updatedTorneo = {
-                              ...torneo,
-                              fechaInicio: parseDate(torneo.fechaInicio),
-                              fechaFin: parseDate(torneo.fechaFin!),
-                            };
-                            setSelectedTorneo(updatedTorneo);
-                            onFormOpen();
-                          }}
-                        >
-                          <Icon icon="solar:pen-2-linear" width={18} className="text-white" />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip content="Eliminar torneo" color="danger">
-                        <Button
-                          isIconOnly
-                          size="sm"
-                          variant="flat"
-                          color="danger"
-                          onPress={() => {
-                            setTorneoToDelete(torneo);
-                            onDeleteOpen();
-                          }}
-                        >
-                          <Icon icon="solar:trash-bin-trash-linear" width={18} className="text-white" />
-                        </Button>
-                      </Tooltip>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+                    />
+                  </div>
+                ) : null
+              }
+              classNames={{
+                wrapper: "min-h-[300px] p-2",
+                th: "bg-blue-800 text-white font-medium",
+                td: "py-3 text-gray-200",
+                tr: "hover:bg-gray-700",
+              }}
+            >
+              <TableHeader>
+                <TableColumn>NOMBRE</TableColumn>
+                <TableColumn>FECHA INICIO</TableColumn>
+                <TableColumn>FECHA FIN</TableColumn>
+                <TableColumn>MONTO TOTAL</TableColumn>
+                <TableColumn>MONTO FECHA</TableColumn>
+                <TableColumn>MONTO POLLA</TableColumn>
+                <TableColumn>ESTADO</TableColumn>
+                <TableColumn className="text-right">ACCIONES</TableColumn>
+              </TableHeader>
+              <TableBody emptyContent="No hay torneos disponibles">
+                {items.map((torneo) => (
+                  <TableRow key={torneo.codTorneo}>
+                    <TableCell className="font-medium text-gray-100">{torneo.nombre}</TableCell>
+                    <TableCell>{formatDate(torneo.fechaInicio)}</TableCell>
+                    <TableCell>{formatDate(torneo.fechaFin)}</TableCell>
+                    <TableCell>{formatAmount(torneo.montoTotal)}</TableCell>
+                    <TableCell>{formatAmount(torneo.montoFecha)}</TableCell>
+                    <TableCell>{formatAmount(torneo.montoPolla)}</TableCell>
+                    <TableCell>
+                      <Chip
+                        color={torneo.finalizado === "SI" ? "success" : "warning"}
+                        size="sm"
+                        variant="flat"
+                        classNames={{
+                          base: "bg-opacity-80",
+                          content: "text-white",
+                        }}
+                      >
+                        {torneo.finalizado === "SI" ? "Finalizado" : "En curso"}
+                      </Chip>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-end gap-2">
+                        <Tooltip content="Editar torneo" color="primary">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="primary"
+                            onPress={() => handleEditTorneo(torneo)}
+                          >
+                            <Icon icon="solar:pen-2-linear" width={18} className="text-white" />
+                          </Button>
+                        </Tooltip>
+                        <Tooltip content="Eliminar torneo" color="danger">
+                          <Button
+                            isIconOnly
+                            size="sm"
+                            variant="flat"
+                            color="danger"
+                            onPress={() => {
+                              setTorneoToDelete(torneo);
+                              onDeleteOpen();
+                            }}
+                          >
+                            <Icon icon="solar:trash-bin-trash-linear" width={18} className="text-white" />
+                          </Button>
+                        </Tooltip>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardBody>
       </Card>
 
+      {/* Formulario para crear/editar torneos */}
       <TorneoForm
         isOpen={isFormOpen}
         onClose={onFormClose}
-        onSubmit={handleSubmit}
+        onSuccess={handleFormSuccess}
         torneo={selectedTorneo}
       />
 
