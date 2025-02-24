@@ -55,7 +55,7 @@ export const EquiposTable: React.FC<EquiposTableProps> = ({
       case "nombre":
         return (
           <div className="flex flex-col">
-            <p className="text-bold text-small capitalize">{equipo.nombre}</p>
+            <p className="text-bold text-small capitalize text-gray-100">{equipo.nombre}</p>
           </div>
         );
       
@@ -73,7 +73,7 @@ export const EquiposTable: React.FC<EquiposTableProps> = ({
                 color="primary"
                 onPress={() => onEdit(equipo)}
               >
-                <Icon icon="solar:pen-2-linear" width={18} />
+                <Icon icon="solar:pen-2-linear" width={18} className="text-white" />
               </Button>
             </Tooltip>
             <Tooltip content="Eliminar" color="danger">
@@ -84,7 +84,7 @@ export const EquiposTable: React.FC<EquiposTableProps> = ({
                 color="danger"
                 onPress={() => onDelete(equipo)}
               >
-                <Icon icon="solar:trash-bin-trash-linear" width={18} />
+                <Icon icon="solar:trash-bin-trash-linear" width={18} className="text-white" />
               </Button>
             </Tooltip>
           </div>
@@ -109,6 +109,10 @@ export const EquiposTable: React.FC<EquiposTableProps> = ({
           page={page}
           total={total}
           onChange={onPageChange}
+          classNames={{
+            cursor: "bg-blue-500 text-white",
+            item: "text-gray-200 hover:bg-gray-700",
+          }}
         />
       </div>
     );
@@ -123,9 +127,11 @@ export const EquiposTable: React.FC<EquiposTableProps> = ({
       bottomContent={total > 1 ? bottomContent : null}
       bottomContentPlacement="outside"
       classNames={{
-        wrapper: "min-h-[222px]",
-        th: "bg-primary-50",
-        td: "py-3",
+        wrapper: "min-h-[300px] p-2",
+        th: "bg-blue-800 text-white font-medium",
+        td: "py-3 text-gray-200",
+        tr: "hover:bg-gray-700",
+       
       }}
     >
       <TableHeader columns={columns}>
