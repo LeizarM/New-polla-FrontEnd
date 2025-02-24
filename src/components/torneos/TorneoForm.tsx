@@ -1,7 +1,6 @@
-// src/components/torneos/TorneoForm.tsx
 'use client'
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Modal,
   ModalContent,
@@ -10,13 +9,15 @@ import {
   ModalFooter,
   Button,
   Input,
-  DatePicker,
   Switch,
-  DateValue,
 } from '@nextui-org/react';
 import { Icon } from '@iconify/react';
 import { useForm, Controller } from 'react-hook-form';
 import { Torneo } from '@/types/models/Torneo';
+import CustomDatePicker, { datePickerStyles } from '@/components/ui/CustomDatePicker';
+import { inputClassNames } from '@/components/ui/constants';
+import { parseDate, validateDateRange } from '@/utils/dateUtils';
+import useInjectStyles from '@/hooks/useInjectStyles';
 
 interface TorneoFormProps {
   isOpen: boolean;
@@ -26,6 +27,10 @@ interface TorneoFormProps {
 }
 
 export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: TorneoFormProps) {
+  // Inyectar estilos para DatePicker
+  useInjectStyles(datePickerStyles, 'react-datepicker-styles');
+
+  // Form hook
   const { control, handleSubmit, reset, formState: { errors } } = useForm<Torneo>({
     defaultValues: {
       nombre: '',
@@ -34,50 +39,105 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
       montoTotal: 0,
       montoFecha: 0,
       montoPolla: 0,
-      finalizado: false,
+      finalizado: 'NO',
     }
   });
 
+  // Estados para las fechas y validaciones
+  const [fechaInicio, setFechaInicio] = useState<Date>(new Date());
+  const [fechaFin, setFechaFin] = useState<Date>(new Date());
+  const [fechaInicioError, setFechaInicioError] = useState<string>("");
+  const [fechaFinError, setFechaFinError] = useState<string>("");
+
+  // Inicializar formulario con datos del torneo (si existe)
   useEffect(() => {
     if (torneo) {
+      const fechaInicioDate = parseDate(torneo.fechaInicio) || new Date();
+      const fechaFinDate = parseDate(torneo.fechaFin) || new Date();
+      
+      setFechaInicio(fechaInicioDate);
+      setFechaFin(fechaFinDate);
+      
       reset({
-        nombre: torneo.nombre,
-        fechaInicio: torneo.fechaInicio ? new Date(torneo.fechaInicio) : new Date(),
-        fechaFin: torneo.fechaFin ? new Date(torneo.fechaFin) : new Date(),
-        montoTotal: torneo.montoTotal,
-        montoFecha: torneo.montoFecha,
-        montoPolla: torneo.montoPolla,
-        finalizado: torneo.finalizado,
+        ...torneo,
+        fechaInicio: fechaInicioDate,
+        fechaFin: fechaFinDate,
       });
     } else {
-      reset({
-        nombre: '',
-        fechaInicio: new Date(),
-        fechaFin: new Date(),
-        montoTotal: 0,
-        montoFecha: 0,
-        montoPolla: 0,
-        finalizado: false,
-      });
+      const now = new Date();
+      setFechaInicio(now);
+      setFechaFin(now);
+      reset();
     }
-  }, [torneo, reset]);
+  }, [torneo, reset, isOpen]);
 
-  const onFormSubmit = async (data: Torneo) => {
-    const torneoData: Torneo = {
-      ...data,
-      codTorneo: torneo?.codTorneo,
-    };
+  // Validar fechas
+  const validateDates = (): boolean => {
+    setFechaInicioError("");
+    setFechaFinError("");
     
-    const success = await onSubmit(torneoData);
-    if (success) {
-      onClose();
+    if (!fechaInicio) {
+      setFechaInicioError("La fecha de inicio es requerida");
+      return false;
     }
+    
+    if (!fechaFin) {
+      setFechaFinError("La fecha de fin es requerida");
+      return false;
+    }
+    
+    if (!validateDateRange(fechaInicio, fechaFin)) {
+      setFechaFinError("La fecha de fin debe ser posterior a la de inicio");
+      return false;
+    }
+    
+    return true;
   };
 
-  // Función para convertir DateValue a Date
-  const dateValueToDate = (dateValue: DateValue | null): Date => {
-    if (!dateValue) return new Date();
-    return new Date(dateValue.year, dateValue.month - 1, dateValue.day);
+  // Manejar envío del formulario
+  const onFormSubmit = (formData: any) => {
+    if (!validateDates()) return;
+    
+    const torneoData: Torneo = {
+      ...formData,
+      codTorneo: torneo?.codTorneo,
+      fechaInicio,
+      fechaFin,
+    };
+    
+    onSubmit(torneoData).then(success => {
+      if (success) onClose();
+    });
+  };
+
+  // Renderizar campos de montos
+  const renderMontoInputs = () => {
+    const montoFields = ['montoTotal', 'montoFecha', 'montoPolla'];
+    
+    return montoFields.map((fieldName) => (
+      <Controller
+        key={fieldName}
+        name={fieldName as keyof Torneo}
+        control={control}
+        rules={{
+          required: `Este campo es requerido`,
+          min: { value: 0, message: 'Debe ser mayor o igual a 0' }
+        }}
+        render={({ field }) => (
+          <Input
+            {...field}
+            type="number"
+            value={field.value?.toString()}
+            onChange={(e) => field.onChange(Number(e.target.value))}
+            label={`Monto ${fieldName.replace('monto', '')}`}
+            variant="bordered"
+            isInvalid={!!errors[fieldName as keyof typeof errors]}
+            errorMessage={errors[fieldName as keyof typeof errors]?.message}
+            classNames={inputClassNames}
+          />
+        )}
+      />
+    ));
   };
 
   return (
@@ -87,10 +147,10 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
       size="lg"
       backdrop="blur"
       classNames={{
-        base: "bg-gray-900 text-white", // Fondo gris oscuro y texto blanco
-        header: "border-b border-gray-700", // Borde oscuro
-        footer: "border-t border-gray-700", // Borde oscuro
-        body: "text-gray-200", // Texto claro en el cuerpo
+        base: "bg-gray-900 text-white",
+        header: "border-b border-gray-700",
+        footer: "border-t border-gray-700",
+        body: "text-gray-200",
       }}
     >
       <ModalContent>
@@ -102,6 +162,7 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
 
           <ModalBody className="py-6">
             <div className="space-y-6">
+              {/* Campo Nombre */}
               <Controller
                 name="nombre"
                 control={control}
@@ -114,176 +175,58 @@ export default function TorneoForm({ isOpen, onClose, onSubmit, torneo }: Torneo
                     variant="bordered"
                     isInvalid={!!errors.nombre}
                     errorMessage={errors.nombre?.message}
-                    classNames={{
-                      input: "text-gray-200", // Texto claro dentro del input
-                      label: "text-gray-400", // Label en gris claro
-                      inputWrapper: "bg-gray-800 border-gray-600", // Fondo oscuro y borde
-                      errorMessage: "text-red-400", // Mensaje de error en rojo claro
-                    }}
+                    classNames={inputClassNames}
                   />
                 )}
               />
 
-              <Controller
-                name="fechaInicio"
-                control={control}
-                rules={{ required: 'La fecha de inicio es requerida' }}
-                render={({ field }) => (
-                  <DatePicker
-                    label="Fecha de Inicio"
-                    variant="bordered"
-                    onChange={(value: DateValue | null) => field.onChange(dateValueToDate(value))}
-                    isInvalid={!!errors.fechaInicio}
-                    errorMessage={errors.fechaInicio?.message}
-                    className="w-full"
-                    classNames={{
-                      input: "text-gray-200",
-                      label: "text-gray-400",
-                      selectorButton: "text-gray-200",
-                      inputWrapper: "bg-gray-800 border-gray-600",
-                      errorMessage: "text-red-400",
-                    }}
-                  />
-                )}
-              />
+              {/* Fecha Inicio */}
+              <div className="w-full">
+                <CustomDatePicker
+                  label="Fecha de Inicio"
+                  selected={fechaInicio}
+                  onChange={(date: Date) => setFechaInicio(date)}
+                  isInvalid={!!fechaInicioError}
+                  errorMessage={fechaInicioError}
+                />
+              </div>
 
-              <Controller
-                name="fechaFin"
-                control={control}
-                rules={{
-                  required: 'La fecha de fin es requerida',
-                  validate: (value) => value ? value >= control._formValues.fechaInicio || 'La fecha de fin debe ser posterior a la de inicio' : true,
-                }}
-                render={({ field }) => (
-                  <DatePicker
-                    label="Fecha de Fin"
-                    variant="bordered"
-                    onChange={(value: DateValue | null) => field.onChange(dateValueToDate(value))}
-                    isInvalid={!!errors.fechaFin}
-                    errorMessage={errors.fechaFin?.message}
-                    className="w-full"
-                    classNames={{
-                      input: "text-gray-200",
-                      label: "text-gray-400",
-                      selectorButton: "text-gray-200",
-                      inputWrapper: "bg-gray-800 border-gray-600",
-                      errorMessage: "text-red-400",
-                    }}
-                  />
-                )}
-              />
+              {/* Fecha Fin */}
+              <div className="w-full">
+                <CustomDatePicker
+                  label="Fecha de Fin"
+                  selected={fechaFin}
+                  onChange={(date: Date) => setFechaFin(date)}
+                  isInvalid={!!fechaFinError}
+                  errorMessage={fechaFinError}
+                  minDate={fechaInicio}
+                />
+              </div>
 
-              <Controller
-                name="montoTotal"
-                control={control}
-                rules={{
-                  required: 'El monto total es requerido',
-                  min: { value: 0, message: 'El monto debe ser mayor o igual a 0' },
-                }}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="number"
-                    value={field.value?.toString()}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    label="Monto Total ($)"
-                    placeholder="Ej: 5"
-                    variant="bordered"
-                    startContent={<span className="text-gray-400">$</span>}
-                    isInvalid={!!errors.montoTotal}
-                    errorMessage={errors.montoTotal?.message}
-                    classNames={{
-                      input: "text-gray-200",
-                      label: "text-gray-400",
-                      inputWrapper: "bg-gray-800 border-gray-600",
-                      errorMessage: "text-red-400",
-                    }}
-                  />
-                )}
-              />
+              {/* Campos de Montos */}
+              {renderMontoInputs()}
 
-              <Controller
-                name="montoFecha"
-                control={control}
-                rules={{
-                  required: 'El monto por fecha es requerido',
-                  min: { value: 0, message: 'El monto debe ser mayor o igual a 0' },
-                }}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="number"
-                    value={field.value?.toString()}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    label="Monto por Fecha ($)"
-                    placeholder="Ej: 2"
-                    variant="bordered"
-                    startContent={<span className="text-gray-400">$</span>}
-                    isInvalid={!!errors.montoFecha}
-                    errorMessage={errors.montoFecha?.message}
-                    classNames={{
-                      input: "text-gray-200",
-                      label: "text-gray-400",
-                      inputWrapper: "bg-gray-800 border-gray-600",
-                      errorMessage: "text-red-400",
-                    }}
-                  />
-                )}
-              />
-
-              <Controller
-                name="montoPolla"
-                control={control}
-                rules={{
-                  required: 'El monto de la polla es requerido',
-                  min: { value: 0, message: 'El monto debe ser mayor o igual a 0' },
-                }}
-                render={({ field }) => (
-                  <Input
-                    {...field}
-                    type="number"
-                    value={field.value?.toString()}
-                    onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                    label="Monto de la Polla ($)"
-                    placeholder="Ej: 3"
-                    variant="bordered"
-                    startContent={<span className="text-gray-400">$</span>}
-                    isInvalid={!!errors.montoPolla}
-                    errorMessage={errors.montoPolla?.message}
-                    classNames={{
-                      input: "text-gray-200",
-                      label: "text-gray-400",
-                      inputWrapper: "bg-gray-800 border-gray-600",
-                      errorMessage: "text-red-400",
-                    }}
-                  />
-                )}
-              />
-
+              {/* Switch Finalizado */}
               <Controller
                 name="finalizado"
                 control={control}
                 render={({ field }) => (
-                  <Switch
-                    isSelected={field.value}
-                    onValueChange={field.onChange}
-                    color="success"
-                    size="sm"
-                    className="text-gray-200"
-                  >
-                    Finalizado
-                  </Switch>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      isSelected={field.value === 'SI'}
+                      onValueChange={(checked) => field.onChange(checked ? 'SI' : 'NO')}
+                      color="success"
+                      size="sm"
+                    />
+                    <span className="text-gray-200">Finalizado</span>
+                  </div>
                 )}
               />
             </div>
           </ModalBody>
 
           <ModalFooter>
-            <Button
-              variant="light"
-              onPress={onClose}
-              className="text-gray-300 hover:text-white"
-            >
+            <Button variant="light" onPress={onClose} className="text-gray-300 hover:text-white">
               Cancelar
             </Button>
             <Button

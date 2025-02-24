@@ -1,6 +1,6 @@
 import axios from "axios";
 import authService from "./auth.services";
-import { Torneo } from "@/types/models/Torneo";
+import { TorneoResponse } from "@/types/models/Torneo";
 
 
 
@@ -29,7 +29,7 @@ const axiosInstance = axios.create({
     // Obtener todos los torneos
     getAllTorneos: async () => {
       try {
-        const response = await axiosInstance.post<Torneo[]>('/lst-torneos');
+        const response = await axiosInstance.post<TorneoResponse>('/lst-torneos');
         console.log('Respuesta:', response.data);
         return response.data;
       } catch (error : any) {

@@ -21,7 +21,7 @@ import {
 } from '@nextui-org/react';
 import { Icon } from "@iconify/react";
 import { SearchIcon } from "@nextui-org/shared-icons";
-import { Torneo } from '@/types/models/Torneo';
+import { Torneo, TorneoResponse } from '@/types/models/Torneo';
 import { torneoService } from '@/services/torneo.services';
 import { useToast } from '@/hooks/useToast';
 import TorneoForm from '@/components/torneos/TorneoForm';
@@ -43,9 +43,7 @@ export default function TorneosPage() {
   const fetchTorneos = async () => {
     try {
       setLoading(true);
-      const response = await torneoService.getAllTorneos();
-      console.log('Datos recibidos de getAllTorneos:', response);
-      // Accedemos a response.data para obtener el array de torneos
+      const response: TorneoResponse = await torneoService.getAllTorneos();
       setTorneos(Array.isArray(response.data) ? response.data : []);
     } catch (error: any) {
       showToast({
@@ -81,16 +79,26 @@ export default function TorneosPage() {
     return paginated;
   }, [page, filteredItems]);
 
-  // Corrección de fechas para evitar el desplazamiento de un día (ajuste de zona horaria)
+  // Función para convertir cadena YYYY-MM-DD a Date
+  const parseDate = (dateStr: string | undefined | Date): Date => {
+    if (!dateStr) return new Date();
+    if (dateStr instanceof Date) return dateStr;
+    const [year, month, day] = dateStr.split('-').map(Number);
+    return new Date(year, month - 1, day); // month - 1 porque los meses en Date son 0-11
+  };
+
+  // Corrección de fechas para evitar el desplazamiento de un día
   const formatDate = (date: Date | string | undefined) => {
     if (!date) return '-';
+    if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [year, month, day] = date.split('-');
+      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    }
     const dateObj = date instanceof Date ? date : new Date(date);
-    return dateObj.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      timeZone: 'America/Lima' // Ajusta a tu zona horaria local si es diferente
-    });
+    const day = dateObj.getDate().toString().padStart(2, '0');
+    const month = (dateObj.getMonth() + 1).toString().padStart(2, '0');
+    const year = dateObj.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   // Formato de montos sin moneda (solo números con separadores de miles)
@@ -189,7 +197,6 @@ export default function TorneosPage() {
               classNames={{
                 input: "text-gray-200 bg-gray-800",
                 inputWrapper: "border-gray-600 bg-gray-800",
-                
               }}
             />
           </div>
@@ -221,7 +228,6 @@ export default function TorneosPage() {
               th: "bg-blue-800 text-white font-medium",
               td: "py-3 text-gray-200",
               tr: "hover:bg-gray-700",
-              
             }}
           >
             <TableHeader>
@@ -245,7 +251,7 @@ export default function TorneosPage() {
                   <TableCell>{formatAmount(torneo.montoPolla)}</TableCell>
                   <TableCell>
                     <Chip
-                      color={torneo.finalizado ? "success" : "warning"}
+                      color={torneo.finalizado === "SI" ? "success" : "warning"}
                       size="sm"
                       variant="flat"
                       classNames={{
@@ -253,7 +259,7 @@ export default function TorneosPage() {
                         content: "text-white",
                       }}
                     >
-                      {torneo.finalizado ? "Finalizado" : "En curso"}
+                      {torneo.finalizado === "SI" ? "Finalizado" : "En curso"}
                     </Chip>
                   </TableCell>
                   <TableCell>
@@ -265,7 +271,13 @@ export default function TorneosPage() {
                           variant="flat"
                           color="primary"
                           onPress={() => {
-                            setSelectedTorneo(torneo);
+                            // Convertimos las fechas a Date antes de pasarlas
+                            const updatedTorneo = {
+                              ...torneo,
+                              fechaInicio: parseDate(torneo.fechaInicio),
+                              fechaFin: parseDate(torneo.fechaFin!),
+                            };
+                            setSelectedTorneo(updatedTorneo);
                             onFormOpen();
                           }}
                         >

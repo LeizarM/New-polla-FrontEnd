@@ -6,7 +6,13 @@ export interface Torneo {
     montoTotal?: number;
     montoFecha?: number;
     montoPolla?: number;
-    finalizado?: boolean;
+    finalizado?: string;
     audUsuario?: string;
     
+  }
+
+  export interface TorneoResponse {
+    message: string;
+    data: Torneo[];
+    status: number;
   }

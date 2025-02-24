@@ -14,7 +14,6 @@ import { Equipo } from '@/types/models/Equipo';
 const ROWS_PER_PAGE = 10;
 
 export default function EquiposPage() {
-  // Custom hook para la lógica de equipos
   const {
     equipos,
     loading,
@@ -22,54 +21,51 @@ export default function EquiposPage() {
     handleDelete
   } = useEquipos();
 
-  // Estados locales
   const [filterValue, setFilterValue] = React.useState("");
   const [page, setPage] = React.useState(1);
-  const [sortDescriptor, setSortDescriptor] = React.useState<{ column: string; direction: "ascending" | "descending"; }>({
+  const [sortDescriptor, setSortDescriptor] = React.useState({
     column: "nombre",
-    direction: "ascending",
+    direction: "ascending" as "ascending" | "descending",
   });
   const [selectedEquipo, setSelectedEquipo] = React.useState<Equipo | undefined>();
   const [equipoToDelete, setEquipoToDelete] = React.useState<Equipo | null>(null);
 
-  // Modales
-  const { 
-    isOpen: isFormOpen, 
-    onOpen: onFormOpen, 
-    onClose: onFormClose 
-  } = useDisclosure();
-  
-  const { 
-    isOpen: isDeleteOpen, 
-    onOpen: onDeleteOpen, 
-    onClose: onDeleteClose 
-  } = useDisclosure();
+  const { isOpen: isFormOpen, onOpen: onFormOpen, onClose: onFormClose } = useDisclosure();
+  const { isOpen: isDeleteOpen, onOpen: onDeleteOpen, onClose: onDeleteClose } = useDisclosure();
 
-  // Filtrado de items
+  // Optimización del filtrado
   const filteredItems = React.useMemo(() => {
-    return equipos.filter((equipo) =>
-      equipo.nombre.toLowerCase().includes(filterValue.toLowerCase()) ||
-      equipo.descripcion?.toLowerCase().includes(filterValue.toLowerCase())
-    );
+    const searchLower = filterValue.toLowerCase();
+    return equipos.filter((equipo) => {
+      const nombreMatch = equipo.nombre?.toLowerCase().includes(searchLower) || false;
+      const descripcionMatch = equipo.descripcion?.toLowerCase().includes(searchLower) || false;
+      return nombreMatch || descripcionMatch;
+    });
   }, [equipos, filterValue]);
 
-  // Paginación
-  const pages = Math.ceil(filteredItems.length / ROWS_PER_PAGE);
-  const items = React.useMemo(() => {
+  // Optimización de la paginación y ordenamiento
+  const sortedAndPaginatedItems = React.useMemo(() => {
     const start = (page - 1) * ROWS_PER_PAGE;
     const end = start + ROWS_PER_PAGE;
 
-    return filteredItems
+    return [...filteredItems]
       .sort((a, b) => {
-        const first = a[sortDescriptor.column as keyof Equipo] ?? '';
-        const second = b[sortDescriptor.column as keyof Equipo] ?? '';
-        const cmp = first < second ? -1 : first > second ? 1 : 0;
-        return sortDescriptor.direction === "descending" ? -cmp : cmp;
+        const first = (a[sortDescriptor.column as keyof Equipo] || '').toString();
+        const second = (b[sortDescriptor.column as keyof Equipo] || '').toString();
+        return sortDescriptor.direction === "ascending" 
+          ? first.localeCompare(second)
+          : second.localeCompare(first);
       })
       .slice(start, end);
-  }, [page, filteredItems, sortDescriptor]);
+  }, [filteredItems, page, sortDescriptor]);
 
-  // Handlers
+  const pages = Math.ceil(filteredItems.length / ROWS_PER_PAGE);
+
+  const handleSearchChange = React.useCallback((value: string) => {
+    setFilterValue(value);
+    setPage(1);
+  }, []);
+
   const handleFormSubmit = async (equipo: Equipo) => {
     const success = await handleSubmit(equipo, selectedEquipo);
     if (success) {
@@ -88,43 +84,6 @@ export default function EquiposPage() {
     }
   };
 
-  // Componentes memorizados
-  const TopBar = React.memo(() => (
-    <div className="mb-6 flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <h1 className="text-2xl font-bold text-primary">Equipos</h1>
-        <Chip size="sm" variant="flat" color="primary">{equipos.length}</Chip>
-      </div>
-      <Button
-        color="primary"
-        endContent={<Icon icon="solar:add-circle-bold" width={20} />}
-        onPress={() => {
-          setSelectedEquipo(undefined);
-          onFormOpen();
-        }}
-      >
-        Nuevo Equipo
-      </Button>
-    </div>
-  ));
-  TopBar.displayName = "TopBar";
-  const SearchBar = React.memo(() => (
-    <div className="flex items-center gap-4 py-4">
-      <Input
-        className="max-w-[300px]"
-        placeholder="Buscar equipos..."
-        startContent={<SearchIcon className="text-default-400" width={16} />}
-        value={filterValue}
-        onValueChange={(value) => {
-          setFilterValue(value);
-          setPage(1);
-        }}
-      />
-    </div>
-  ));
-  SearchBar.displayName = "SearchBar";
-  
-
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -135,16 +94,45 @@ export default function EquiposPage() {
 
   return (
     <div className="p-6">
-      <TopBar />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-primary">Equipos</h1>
+          <Chip size="sm" variant="flat" color="primary">{equipos.length}</Chip>
+        </div>
+        <Button
+          color="primary"
+          endContent={<Icon icon="solar:add-circle-bold" width={20} />}
+          onPress={() => {
+            setSelectedEquipo(undefined);
+            onFormOpen();
+          }}
+        >
+          Nuevo Equipo
+        </Button>
+      </div>
+
       <Card className="p-4">
-        <SearchBar />
+        <div className="flex items-center gap-4 py-4">
+          <Input
+            className="max-w-[300px]"
+            placeholder="Buscar equipos..."
+            startContent={<SearchIcon className="text-default-400" width={16} />}
+            value={filterValue}
+            onValueChange={handleSearchChange}
+            size="sm"
+          />
+        </div>
+
         <EquiposTable
-          items={items}
+          items={sortedAndPaginatedItems}
           page={page}
           total={pages}
           sortDescriptor={sortDescriptor}
           onPageChange={setPage}
-          onSortChange={(descriptor) => setSortDescriptor({ column: descriptor.column.toString(), direction: descriptor.direction })}
+          onSortChange={(descriptor) => setSortDescriptor({
+            column: descriptor.column.toString(),
+            direction: descriptor.direction
+          })}
           onEdit={(equipo) => {
             setSelectedEquipo(equipo);
             onFormOpen();
