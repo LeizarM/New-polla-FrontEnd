@@ -4,7 +4,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://192.168.68.51:9333/api/polla/:path*'
+        destination: 'http://192.168.3.107:9333/api/polla/:path*'
       }
     ]
   }

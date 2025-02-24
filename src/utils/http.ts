@@ -2,7 +2,7 @@
 import axios, { AxiosError } from 'axios';
 import Cookies from 'js-cookie';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.68.51:9333/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://192.168.3.107:9333/api';
 
 console.log('API URL:', API_URL); // Para debugging
 
